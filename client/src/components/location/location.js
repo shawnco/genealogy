@@ -4,6 +4,7 @@ import {connect} from 'react-redux';
 import {getLocationFull} from './../../actions/location';
 import _ from 'lodash';
 import Minipanel from './../controls/minipanel';
+import Autocomplete from './../common/autocomplete';
 import {GoogleMap, Marker} from '@react-google-maps/api';
 
 const containerStyle = {
@@ -14,6 +15,7 @@ const containerStyle = {
 class Location extends Component {
     constructor(props) {
         super(props);
+        this.addDuplicate = this.addDuplicate.bind(this);
     }
 
     componentDidMount() {
@@ -21,6 +23,10 @@ class Location extends Component {
         if (id) {
             this.props.getLocationFull(id);
         }
+    }
+
+    addDuplicate(e) {
+        console.log(e)
     }
 
     render() {
@@ -46,6 +52,15 @@ class Location extends Component {
                         {death.map(person => <Link to={`/person/${person.id}`}> 
                             <div>{person.name} ({person.birth} - {person.death})</div>
                         </Link>)}
+                    </Minipanel>
+
+                    <Minipanel title={'Locations matched to this'}>
+                        <Autocomplete
+                            url={'location/search'}
+                            formatDisplay={o => o.location}
+                            onSelect={o => console.log(o)}
+                        />
+                        <button onClick={this.addDuplicate}>Add</button>
                     </Minipanel>
                 </div>
                 <div style={{width: '80%', display: 'inline-block'}}>

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Location = require('./../models/location');
+const DuplicateLocation = require('./../models/duplicate_location');
 const Person = require('./../models/person');
 const Sequelize = require('sequelize').Sequelize;
 const _ = require('lodash');
@@ -8,7 +9,7 @@ const send = require('./send');
 const fs = require('fs');
 const parse = require('csv-parse');
 const config = require('./config');
-const rp = require('request-promise');
+const rp = require('request-promise')
 
 const _averageBoundaries = (bounds) => {
     return {
@@ -169,10 +170,38 @@ const _getLocationDeaths = (req, res, next) => {
     });
 }
 
+const _getDuplicateLocations = (req, res, next) => {
+    DuplicateLocation.sequelize.query(`SELECT *
+        FROM location l
+        WHERE l.id IN (
+            SELECT group_id FROM duplicate_location 
+            WHERE location_id = :id
+        )`,
+        {
+            type: DuplicateLocation.sequelize.QueryTypes.SELECT,
+            replacements: {
+                id: req.output.location.id
+            }
+        }).then(dupes => {
+            req.output.duplicates = dupes;
+            return next();
+        });
+}
+
+const search = (req, res, next) => {
+    const query = req.body.query;
+    Location.sequelize.query(`SELECT * FROM location WHERE location LIKE '%${query}%'`,
+    {
+        type: Location.sequelize.QueryTypes.SELECT
+    }).then(results => {
+        req.output = results;
+        return next();
+    });
+}
+
 router.get('/api/location/list', getAllLocations, send);
 router.get('/api/location/:id', getLocation, send);
-router.get('/api/location/:id/full', _initOutput, _getLocation, _getLocationBirths, _getLocationDeaths, send);
+router.get('/api/location/:id/full', _initOutput, _getLocation, _getLocationBirths, _getLocationDeaths, _getDuplicateLocations, send);
 router.get('/api/location/geocode/:count/:offset?', geocodeLocations, send);
-// module.exports = router;
-// module.exports = 
+router.post('/api/location/search', search, send);
 module.exports = {router, setLocationCoordinates}

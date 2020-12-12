@@ -146,12 +146,31 @@ const updatePerson = (req, res, next) => {
 }
 
 const getUnhistorical = (req, res, next) => {
-    const filter = {
-        where: {historical: 0}
-    };
-    Person.findAll(filter).then(people => {
+    // Big ol' query to just return everything and everyone
+    Person.sequelize.query(`SELECT
+            p.id AS person_id,
+            p.name,
+            p.birth,
+            p.death,
+            p.birth_year,
+            p.death_year,
+            bl.id AS bl_id,
+            bl.location AS bl_location,
+            dl.id AS dl_id,
+            dl.location AS dl_location
+        FROM person p
+        LEFT JOIN location bl ON p.birth_location = bl.id
+        LEFT JOIN location dl ON p.death_location = dl.id
+        WHERE p.historical = 0
+        ORDER BY LOWER(p.name) ASC`,
+    {
+        type: Person.sequelize.QueryTypes.SELECT
+    }).then(people => {
         req.output = people;
         return next();
+    }).catch(err => {
+        console.log(err);
+        return next(err);
     });
 }
 
