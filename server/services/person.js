@@ -5,6 +5,7 @@ const Location = require('./../models/location');
 const Sequelize = require('sequelize').Sequelize;
 const _ = require('lodash');
 const send = require('./send');
+const moment = require('moment');
 
 const getPeople = (req, res, next) => {
     const filter = req.body;
@@ -134,6 +135,15 @@ const _getSiblings = (req, res, next) => {
 const updatePerson = (req, res, next) => {
     const id = req.params.id;
     Person.findByPk(id).then(person => {
+        // Account for cases when the birth and death years got changed. We need to parse that and get the new years
+        if (req.body.birth && (req.body.birth !== person.birth)) {
+            const birth_year = moment(req.body.birth).year();
+            person.birth_year = birth_year;
+        }
+        if (req.body.death && (req.body.death !== person.death)) {
+            const death_year = moment(req.body.death).year();
+            person.death_year = death_year;
+        }
         person.name = _.get(req.body, 'name', person.name);
         person.birth = _.get(req.body, 'birth', person.birth);
         person.death = _.get(req.body, 'death', person.death);

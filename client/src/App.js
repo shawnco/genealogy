@@ -3,6 +3,7 @@ import './App.css';
 import React, { Component } from 'react';
 import { Route, withRouter } from 'react-router-dom';
 import {LoadScript} from '@react-google-maps/api';
+import {google_api} from './actions/config';
 
 import Location from './components/location/location';
 import Map from './components/map/map';
@@ -16,7 +17,7 @@ class App extends Component {
 
     render() {
         return <div className='app' style={{ width: '100%' }}>
-            <LoadScript googleMapsApiKey='AIzaSyCG7Pax7CvGW_uOPYz69eK5BjvUga0S6oM'>
+            <LoadScript googleMapsApiKey={google_api}>
                 <Route path='/' component={Map} exact />
                 <Route path='/location/:id' component={Location} exact />
                 <Route path='/map' component={Map} exact />

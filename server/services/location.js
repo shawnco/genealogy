@@ -174,8 +174,9 @@ const _getDuplicateLocations = (req, res, next) => {
     DuplicateLocation.sequelize.query(`SELECT *
         FROM location l
         WHERE l.id IN (
-            SELECT group_id FROM duplicate_location 
-            WHERE location_id = :id
+            SELECT location_id FROM duplicate_location WHERE group_id = (
+                SELECT group_id FROM duplicate_location WHERE location_id = :id
+            ) AND location_id <> :id
         )`,
         {
             type: DuplicateLocation.sequelize.QueryTypes.SELECT,
@@ -199,9 +200,51 @@ const search = (req, res, next) => {
     });
 }
 
+const addDuplicate = (req, res, next) => {
+    const currentLocation = req.params.id;
+    const dupeLocation = req.body.dupeLocation;
+    // First see if our current is in the table
+    Location.sequelize.query(`SELECT group_id FROM duplicate_location WHERE location_id = :id`,
+    {
+        type: Location.sequelize.QueryTypes.SELECT,
+        replacements: { id: currentLocation }
+    }).then(dupes => {
+        if (dupes.length > 0) {
+            // This means we found it. Just insert and be on our way.
+            const data = {
+                location_id: dupeLocation,
+                group_id: dupes[0].group_id
+            };
+            DuplicateLocation.create(data).then(newDupe => {
+                req.output = newDupe;
+                return next();
+            })
+        } else {
+            // Need to add current and dupe into table. First find the new group id
+            DuplicateLocation.max('group_id').then(max => {
+                const newMax = max ? max++ : 1;
+                const data = [
+                    {
+                        location_id: currentLocation,
+                        group_id: newMax
+                    }, {
+                        location_id: dupeLocation,
+                        group_id: newMax
+                    }
+                ];
+                DuplicateLocation.bulkCreate(data).then(newDupe => {
+                    req.output = newDupe;
+                    return next();
+                });
+            });
+        }
+    });
+}
+
 router.get('/api/location/list', getAllLocations, send);
 router.get('/api/location/:id', getLocation, send);
 router.get('/api/location/:id/full', _initOutput, _getLocation, _getLocationBirths, _getLocationDeaths, _getDuplicateLocations, send);
 router.get('/api/location/geocode/:count/:offset?', geocodeLocations, send);
 router.post('/api/location/search', search, send);
+router.put('/api/location/:id/dupe', addDuplicate, send);
 module.exports = {router, setLocationCoordinates}
